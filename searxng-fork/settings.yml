@@ -1,0 +1,55 @@
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "Seek"
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en"
+  formats:
+    - html
+    - json
+
+server:
+  secret_key: "seekmcpsecretchangeme"
+  bind_address: "0.0.0.0"
+  port: 8080
+  base_url: false
+  limiter: false
+  public_instance: false
+
+ui:
+  static_use_hash: false
+  default_theme: simple
+  default_locale: ""
+  query_in_title: false
+  infinite_scroll: false
+  center_alignment: false
+  cache_url: false
+
+# Disable rate-limit and bot-check features that conflict with relay usage
+outgoing:
+  request_timeout: 20.0
+  max_request_timeout: 30.0
+  useragent_suffix: ""
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true
+
+engines:
+  - name: google
+    engine: google
+    shortcut: g
+    disabled: false
+
+  - name: bing
+    engine: bing
+    shortcut: b
+    disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false

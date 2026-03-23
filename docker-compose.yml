@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+
+  wreq-relay:
+    build:
+      context: ./wreq-relay
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3000"
+    networks:
+      - search_net
+
+  searxng:
+    build:
+      context: ./searxng-fork
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # Exposed for MCP server (host) and browser debugging
+    volumes:
+      # Mount proxies.txt at runtime so you can update it without rebuilding.
+      # Remove the mount (or leave proxies.txt empty) to run without proxies.
+      - ./proxies.txt:/etc/searxng/proxies.txt:ro
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_PORT=8080
+    networks:
+      - search_net
+    depends_on:
+      - wreq-relay
+
+  # The MCP server communicates via stdio when spawned by an AI agent.
+  # To use it that way, build the image then configure your agent to run:
+  #   docker run -i --rm --network seek_search_net seek-mcp-server
+  #
+  # If you prefer SSE transport, uncomment the ports block below and switch
+  # to SSEServerTransport in src/index.ts.
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # ports:
+    #   - "3001:3001"   # Uncomment for SSE transport
+    environment:
+      - SEARXNG_URL=http://searxng:8080
+    networks:
+      - search_net
+    depends_on:
+      - searxng
+    stdin_open: true   # Keep stdin open for stdio MCP transport
+    tty: false
+
+networks:
+  search_net:
+    driver: bridge
