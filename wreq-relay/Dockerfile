@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
     cmake \
     g++ \
     make \
+    clang \
+    git \
     perl \
     pkg-config \
     libclang-dev \
