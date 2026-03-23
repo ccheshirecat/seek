@@ -2,7 +2,7 @@ FROM rust:1.85-slim AS builder
 
 # wreq links against BoringSSL, which requires these build tools
 RUN apt-get update && apt-get install -y \
-    build-essential cmake perl pkg-config libclang-dev musl-tools \
+    build-essential cmake perl pkg-config libclang-dev musl-tools golang-go \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
