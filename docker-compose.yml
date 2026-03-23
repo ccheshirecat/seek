@@ -18,13 +18,13 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8080:8080"   # Exposed for MCP server (host) and browser debugging
+      - "47821:8080"   # Exposed for MCP server (host) and browser debugging
     volumes:
       # Mount proxies.txt at runtime so you can update it without rebuilding.
       # Remove the mount (or leave proxies.txt empty) to run without proxies.
       - ./proxies.txt:/etc/searxng/proxies.txt:ro
     environment:
-      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_BASE_URL=http://localhost:47821/
       - SEARXNG_PORT=8080
     networks:
       - search_net
@@ -43,7 +43,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     # ports:
-    #   - "3001:3001"   # Uncomment for SSE transport
+    #   - "47822:3001"   # Uncomment for SSE transport
     environment:
       - SEARXNG_URL=http://searxng:8080
     networks:
