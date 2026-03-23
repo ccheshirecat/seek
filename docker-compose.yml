@@ -40,16 +40,17 @@ services:
       context: ./mcp-server
       dockerfile: Dockerfile
     restart: unless-stopped
-    # ports:
-    #   - "47822:3001"   # Uncomment for SSE transport
+    ports:
+      - "47822:3001"
     environment:
       - SEARXNG_URL=http://searxng:8080
+      - MCP_TRANSPORT=http      # switch to "stdio" if running via docker exec -i
+      - MCP_PORT=3001
     networks:
       - search_net
     depends_on:
       - searxng
-    stdin_open: true   # Keep stdin open for stdio MCP transport
-    tty: false
+    stdin_open: true
 
 networks:
   search_net:
