@@ -1,10 +1,14 @@
 FROM rust:1.82-slim AS builder
 
+# wreq links against BoringSSL, which requires these build tools
+RUN apt-get update && apt-get install -y \
+    build-essential cmake perl pkg-config libclang-dev musl-tools \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY Cargo.toml ./
 COPY src ./src
 
-# Cache dependencies layer
 RUN cargo build --release
 
 FROM debian:bookworm-slim
