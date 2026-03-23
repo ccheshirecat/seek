@@ -9,7 +9,11 @@ class StaticISPRotator:
             with open(file_path) as f:
                 proxies = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
-        self.proxies = proxies if proxies else [""]
+        # Normalize bare ip:port → http://ip:port
+        self.proxies = [
+            p if "://" in p else f"http://{p}"
+            for p in proxies
+        ] if proxies else [""]
         self.pool = itertools.cycle(self.proxies)
 
     def get_next(self) -> str:
