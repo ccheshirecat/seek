@@ -12,3 +12,6 @@ server:
   secret_key: "seekmcpsecretchangeme"
   limiter: false
   public_instance: false
+
+ui:
+  cache_url: ""
