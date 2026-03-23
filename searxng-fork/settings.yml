@@ -27,7 +27,7 @@ ui:
   query_in_title: false
   infinite_scroll: false
   center_alignment: false
-  cache_url: false
+  cache_url: ""
 
 # Disable rate-limit and bot-check features that conflict with relay usage
 outgoing:

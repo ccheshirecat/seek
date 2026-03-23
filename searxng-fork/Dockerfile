@@ -10,7 +10,8 @@ COPY network_relay.py /tmp/network_relay.py
 RUN cat /tmp/network_relay.py >> /usr/local/searxng/searx/network.py \
     && rm /tmp/network_relay.py
 
-# Default settings (can be overridden by volume mount)
+# Default settings — must be owned by searxng user
 COPY settings.yml /etc/searxng/settings.yml
+RUN chown searxng:searxng /etc/searxng/settings.yml
 
 USER searxng
