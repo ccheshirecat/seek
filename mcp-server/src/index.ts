@@ -180,7 +180,8 @@ async function main() {
       const id = req.query.sessionId as string;
       const transport = sessions.get(id);
       if (!transport) { res.status(404).json({ error: "Session not found" }); return; }
-      await transport.handlePostMessage(req, res);
+      // Pass req.body explicitly — express.json() already consumed the stream
+      await transport.handlePostMessage(req, res, req.body);
     });
 
     // Health check — useful for load balancers / Claude Code remote config
