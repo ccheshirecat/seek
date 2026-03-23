@@ -84,6 +84,76 @@ function formatResults(data: SearxResponse): string {
 }
 
 // ---------------------------------------------------------------------------
+// Search fetcher with fallback + deduplication
+// ---------------------------------------------------------------------------
+
+/** Deduplicate results by URL, keeping the entry with the longest snippet. */
+function dedup(results: SearxResult[]): SearxResult[] {
+  const seen = new Map<string, SearxResult>();
+  for (const r of results) {
+    const existing = seen.get(r.url);
+    if (!existing || (r.content?.length ?? 0) > (existing.content?.length ?? 0)) {
+      seen.set(r.url, r);
+    }
+  }
+  return Array.from(seen.values());
+}
+
+async function searxRequest(
+  query: string,
+  page: number,
+  engines?: string
+): Promise<SearxResponse | null> {
+  try {
+    const params: Record<string, unknown> = {
+      q: query,
+      language: "en",
+      pageno: page,
+      format: "json",
+    };
+    if (engines) params.engines = engines;
+
+    const resp = await axios.get<SearxResponse>(`${SEARXNG_URL}/search`, {
+      params,
+      timeout: 30_000,
+    });
+    return resp.data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Strategy:
+ *   1. Try all three engines simultaneously.
+ *   2. If < 3 results, fall back to SearXNG's own default engine selection.
+ *   3. Deduplicate across engines by URL.
+ */
+async function fetchWithFallback(
+  query: string,
+  page: number
+): Promise<SearxResponse | null> {
+  const data = await searxRequest(query, page, "google,bing,duckduckgo");
+
+  if (data && (data.results?.length ?? 0) >= 3) {
+    data.results = dedup(data.results);
+    return data;
+  }
+
+  // Fallback: let SearXNG pick engines
+  const fallback = await searxRequest(query, page);
+  if (!fallback) return data; // return whatever we got, even if sparse
+
+  // Merge results from both attempts, then dedup
+  const merged = [...(data?.results ?? []), ...(fallback.results ?? [])];
+  fallback.results = dedup(merged);
+  fallback.suggestions = [
+    ...new Set([...(data?.suggestions ?? []), ...(fallback.suggestions ?? [])]),
+  ];
+  return fallback;
+}
+
+// ---------------------------------------------------------------------------
 // MCP server definition
 // ---------------------------------------------------------------------------
 const server = new Server(
@@ -96,23 +166,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "web_search",
       description:
-        "Search the web and return structured results (title, URL, snippet, source engine, date). " +
-        "Uses Chrome 137 TLS emulation via rotating ISP proxies for high-fidelity results.",
+        "Search the web. Returns ranked, deduplicated results with title, URL, snippet, source, and date.",
       inputSchema: {
         type: "object",
         properties: {
           query: {
             type: "string",
             description: "Search query",
-          },
-          engines: {
-            type: "string",
-            description:
-              "Comma-separated engines: google, bing, duckduckgo. Defaults to all three.",
-          },
-          language: {
-            type: "string",
-            description: "BCP-47 language code, e.g. 'en', 'fr'. Defaults to 'en'.",
           },
           page: {
             type: "number",
@@ -130,27 +190,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     throw new Error(`Unknown tool: ${request.params.name}`);
   }
 
-  const args     = request.params.arguments as Record<string, unknown>;
-  const query    = args.query as string;
-  const engines  = (args.engines  as string | undefined) ?? "google,bing,duckduckgo";
-  const language = (args.language as string | undefined) ?? "en";
-  const page     = (args.page     as number | undefined) ?? 1;
+  const args  = request.params.arguments as Record<string, unknown>;
+  const query = args.query as string;
+  const page  = (args.page as number | undefined) ?? 1;
 
-  let resp;
-  try {
-    resp = await axios.get<SearxResponse>(`${SEARXNG_URL}/search`, {
-      params: { q: query, engines, language, pageno: page, format: "json" },
-      timeout: 30_000,
-    });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
+  const data = await fetchWithFallback(query, page);
+  if (!data) {
     return {
-      content: [{ type: "text", text: `Search failed: ${message}` }],
+      content: [{ type: "text", text: `Search failed for: ${query}` }],
       isError: true,
     };
   }
 
-  const data = resp.data;
   if (!data.results?.length) {
     return { content: [{ type: "text", text: `No results found for: ${query}` }] };
   }
