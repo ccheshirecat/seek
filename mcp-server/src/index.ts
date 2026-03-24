@@ -1,6 +1,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -304,6 +305,15 @@ async function main() {
     app.get("/health", (_req, res) =>
       res.json({ status: "ok", sessions: sessions.size, cached: cache.size })
     );
+
+    // Streamable HTTP transport — for clients that don't support SSE
+    app.all("/mcp", async (req, res) => {
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined, // stateless — new instance per request
+      });
+      await makeServer().connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    });
 
     const httpServer = app.listen(PORT, () =>
       process.stderr.write(`Seek MCP server (HTTP/SSE) listening on :${PORT}\n`)
